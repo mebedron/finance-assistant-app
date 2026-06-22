@@ -1,30 +1,34 @@
-let expenseChartInstance = null;
+let expenseChartInstance = null; // tutaj trzymamy aktualny wykres, żeby później można było go zniszczyć przed ponownym rysowaniem
 
+// główna funkcja - pobiera transakcje z serwera i aktualizuje całą stronę
 function loadTransactions() {
-    fetch('get.php')
-    .then(response => response.json())
+    fetch('get.php') // wysyłamy zapytanie GET do get.php
+    .then(response => response.json()) // zamieniamy odpowiedź serwera (tekst JSON) na normalny obiekt JS
     .then(data => {
-        document.getElementById('totalBalance').innerText = data.balance.toFixed(2);
-        
+        document.getElementById('totalBalance').innerText = data.balance.toFixed(2); // toFixed(2) - zaokrąglenie do 2 miejsc, dla pieniędzy
+
         const tbody = document.getElementById('transactionList');
-        tbody.innerHTML = ''; 
+        tbody.innerHTML = ''; // czyścimy tabelę przed ponownym wypełnieniem
         const filterValue = document.getElementById('filterType').value;
 
-        let expensesData = {}; 
+        let expensesData = {}; // tutaj zbieramy sumy wydatków po kategoriach - dla wykresu
 
         if(data.transactions.length === 0) {
             tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted py-5"><i class="bi bi-inbox fs-1 d-block mb-2"></i>Brak operacji. Dodaj swoją pierwszą transakcję.</td></tr>';
         }
 
         data.transactions.forEach(t => {
+            // zbieramy dane do wykresu ze WSZYSTKICH wydatków, filtr na to nie wpływa
             if (t.type === 'expense') {
                 expensesData[t.category] = (expensesData[t.category] || 0) + parseFloat(t.amount);
             }
 
+            // jeśli wybrany jest filtr i typ transakcji się nie zgadza - pomijamy ten wiersz w tabeli
             if (filterValue !== 'all' && t.type !== filterValue) return;
 
             const isIncome = t.type === 'income';
             
+            // przygotowujemy badge (znaczek) dla typu transakcji
             const typeBadge = isIncome 
                 ? '<span class="badge bg-success bg-opacity-10 text-success px-3 py-2 rounded-pill"><i class="bi bi-arrow-up-circle-fill me-1"></i> Dochód</span>' 
                 : '<span class="badge bg-danger bg-opacity-10 text-danger px-3 py-2 rounded-pill"><i class="bi bi-arrow-down-circle-fill me-1"></i> Wydatek</span>';
@@ -32,6 +36,7 @@ function loadTransactions() {
             const amountStyle = isIncome ? 'text-success' : 'custom-brand-text'; 
             const sign = isIncome ? '+' : '-';
 
+            // składamy jeden wiersz tabeli jako normalny string html
             const row = `<tr>
                 <td class="text-muted py-3">${t.date}</td>
                 <td class="py-3">${typeBadge}</td>
@@ -44,28 +49,31 @@ function loadTransactions() {
                 </td>
             </tr>`;
             
-            tbody.innerHTML += row;
+            tbody.innerHTML += row; // dodajemy wiersz do tabeli
         });
 
-        updateChart(expensesData);
+        updateChart(expensesData); // aktualizujemy wykres z nowymi danymi
     })
     .catch(error => console.error('Błąd:', error));
 }
 
+// rysuje/przerysowuje wykres wydatków po kategoriach
 function updateChart(data) {
     const ctx = document.getElementById('expenseChart').getContext('2d');
     
+    // jeśli wykres był już wcześniej narysowany - usuwamy go
+    // bez tego Chart.js będzie rysował wykresy jeden na drugim przy każdej aktualizacji
     if (expenseChartInstance) {
         expenseChartInstance.destroy();
     }
 
-    const categories = Object.keys(data);
-    const amounts = Object.values(data);
+    const categories = Object.keys(data); // nazwy kategorii
+    const amounts = Object.values(data); // sumy po kategoriach
 
     expenseChartInstance = new Chart(ctx, {
-        type: 'doughnut',
+        type: 'doughnut', // wykres kołowy (pierścieniowy)
         data: {
-            labels: categories.length > 0 ? categories : ['Brak danych'],
+            labels: categories.length > 0 ? categories : ['Brak danych'], // jeśli danych nie ma - pokazujemy zastępczy tekst
             datasets: [{
                 data: amounts.length > 0 ? amounts : [1],
                 backgroundColor: amounts.length > 0 ? [
@@ -92,27 +100,31 @@ function updateChart(data) {
     });
 }
 
+// usuwanie transakcji po id
 function deleteTransaction(id) {
-    if(confirm('Czy na pewno chcesz usunąć?')) {
-        let formData = new FormData();
+    if(confirm('Czy na pewno chcesz usunąć?')) { // wbudowane okno potwierdzenia przeglądarki
+        let formData = new FormData(); // FormData potrzebny żeby wysłać dane tak jak normalny formularz html
         formData.append('id', id);
 
         fetch('delete.php', { method: 'POST', body: formData })
         .then(response => response.json())
         .then(data => {
-            if(data.status === 'success') loadTransactions(); 
+            if(data.status === 'success') loadTransactions(); // przeładowujemy listę po usunięciu
             else alert('Błąd: ' + data.message);
         });
     }
 }
 
+// uruchamiamy ładowanie transakcji od razu jak strona się załaduje
 document.addEventListener('DOMContentLoaded', loadTransactions);
 
+// obsługa wysłania formularza dodawania transakcji
 document.getElementById('financeForm').addEventListener('submit', function(e) {
-    e.preventDefault(); 
+    e.preventDefault(); // blokujemy domyślne wysłanie formularza (przeładowałoby stronę)
+
     let submitBtn = this.querySelector('button[type="submit"]');
     let originalContent = submitBtn.innerHTML;
-    submitBtn.disabled = true; 
+    submitBtn.disabled = true; // blokujemy przycisk, żeby user nie kliknął dwa razy
     submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Zapisywanie...';
 
     let formData = new FormData();
@@ -125,12 +137,13 @@ document.getElementById('financeForm').addEventListener('submit', function(e) {
     .then(response => response.json()) 
     .then(data => {
         if(data.status === 'success') {
-            document.getElementById('financeForm').reset(); 
-            loadTransactions(); 
+            document.getElementById('financeForm').reset(); // czyścimy formularz po sukcesie
+            loadTransactions(); // aktualizujemy listę i saldo
         } else alert('Błąd: ' + data.message);
     })
     .catch(error => console.error('Błąd:', error))
     .finally(() => {
+        // wykonuje się zawsze - odblokowujemy przycisk z powrotem
         submitBtn.disabled = false;
         submitBtn.innerHTML = originalContent;
     });
