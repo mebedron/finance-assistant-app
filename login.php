@@ -2,6 +2,7 @@
 require 'db.php';
 $error = '';
 
+// jeśli użytkownik jest już zalogowany - od razu przenosimy go na stronę główną
 if (isset($_SESSION['user_id'])) {
     header("Location: index.php");
     exit;
@@ -11,17 +12,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $username = trim($_POST['username']);
     $password = $_POST['password'];
 
+    // szukamy użytkownika po nazwie, pobieramy jego id i hash hasła
     $stmt = $conn->prepare("SELECT id, password FROM users WHERE username = ?");
     $stmt->bind_param("s", $username);
     $stmt->execute();
     $result = $stmt->get_result();
 
     if ($user = $result->fetch_assoc()) {
+        // password_verify porównuje wpisane hasło z hashem z bazy
+        // (to jest para do password_hash z register.php)
         if (password_verify($password, $user['password'])) {
+            // hasło prawidłowe - zapisujemy dane w sesji, teraz user jest "zalogowany"
             $_SESSION['user_id'] = $user['id'];
             $_SESSION['username'] = $username;
             header("Location: index.php");
-            exit;
+            exit; // exit jest tu konieczny, inaczej kod po header i tak by się wykonał
         } else {
             $error = "Nieprawidłowe hasło.";
         }
