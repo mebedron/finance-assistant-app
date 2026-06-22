@@ -1,20 +1,28 @@
 <?php
-require 'db.php';
+require 'db.php'; // podłączamy bazę (tam też startuje sesja)
 $error = '';
 $success = '';
 
+// jeśli formularz został wysłany (metoda POST)
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = trim($_POST['username']);
+    $username = trim($_POST['username']); // trim usuwa spacje z początku i końca
     $password = $_POST['password'];
 
+    // sprawdzamy czy pola nie są puste
     if (!empty($username) && !empty($password)) {
+        
+        // hashujemy hasło - NIGDY nie trzymamy hasła w bazie jako normalny tekst
+        // PASSWORD_DEFAULT sam wybiera bezpieczny algorytm (obecnie to bcrypt)
         $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+
+        // zapytanie przygotowane z "?" zamiast wartości - ochrona przed SQL injection
         $stmt = $conn->prepare("INSERT INTO users (username, password) VALUES (?, ?)");
-        $stmt->bind_param("ss", $username, $hashed_password);
+        $stmt->bind_param("ss", $username, $hashed_password); // "ss" = dwa stringi (string, string)
         
         if ($stmt->execute()) {
             $success = "Rejestracja zakończona sukcesem! <a href='login.php'>Zaloguj się</a>";
         } else {
+            // jeśli taki username już jest w bazie (UNIQUE), zapytanie się nie wykona - łapiemy to tutaj
             $error = "Taki użytkownik już istnieje.";
         }
         $stmt->close();
