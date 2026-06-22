@@ -1,5 +1,7 @@
 <?php
 session_start();
+// jeśli user nie jest zalogowany - od razu wyrzucamy go na stronę logowania
+// (bez tego sprawdzenia każdy mógłby otworzyć stronę główną bezpośrednim linkiem)
 if (!isset($_SESSION['user_id'])) {
     header("Location: login.php");
     exit;
@@ -26,6 +28,7 @@ if (!isset($_SESSION['user_id'])) {
                 <i class="bi bi-wallet2 text-primary me-2"></i> CDV FinanceApp
             </a>
             <div class="d-flex align-items-center">
+                <!-- htmlspecialchars - ochrona przed XSS, żeby username nie wykonał się jako kod HTML/JS -->
                 <span class="me-4 text-muted d-none d-md-inline">Witaj, <b class="custom-brand-text"><?= htmlspecialchars($_SESSION['username']) ?></b></span>
                 <a href="logout.php" class="btn btn-light rounded-pill border px-4">
                     <i class="bi bi-box-arrow-right"></i> <span class="d-none d-md-inline">Wyloguj</span>
@@ -37,6 +40,7 @@ if (!isset($_SESSION['user_id'])) {
     <div class="container">
         <div class="row g-4">
             <div class="col-lg-4">
+                <!-- formularz dodawania nowej transakcji, obsługa w script.js -->
                 <div class="card p-4 mb-4">
                     <h5 class="fw-bold mb-4"><i class="bi bi-plus-circle me-2 text-primary"></i>Nowa operacja</h5>
                     <form id="financeForm">
@@ -66,6 +70,7 @@ if (!isset($_SESSION['user_id'])) {
                     </form>
                 </div>
 
+                <!-- tutaj Chart.js rysuje wykres wydatków po kategoriach -->
                 <div class="card p-4">
                     <h5 class="fw-bold text-center mb-4"><i class="bi bi-pie-chart me-2 text-primary"></i>Struktura wydatków</h5>
                     <canvas id="expenseChart"></canvas>
@@ -73,6 +78,7 @@ if (!isset($_SESSION['user_id'])) {
             </div>
 
             <div class="col-lg-8">
+                <!-- saldo aktualizuje się przez JS po pobraniu danych z get.php -->
                 <div class="card balance-card p-4 mb-4 d-flex flex-row justify-content-between align-items-center">
                     <div>
                         <h6 class="text-white-50 mb-1">Dostępne środki</h6>
@@ -86,6 +92,7 @@ if (!isset($_SESSION['user_id'])) {
                 <div class="card p-4">
                     <div class="d-flex justify-content-between align-items-center mb-4">
                         <h5 class="fw-bold m-0"><i class="bi bi-card-list me-2 text-primary"></i>Historia operacji</h5>
+                        <!-- filtr zmienia widok listy, obsługa w loadTransactions() w script.js -->
                         <select id="filterType" class="form-select w-auto cursor-pointer" style="min-width: 140px;" onchange="loadTransactions()">
                             <option value="all">Wszystkie</option>
                             <option value="income">Zyski</option>
@@ -104,6 +111,7 @@ if (!isset($_SESSION['user_id'])) {
                                     <th class="py-3 text-end">AKCJA</th>
                                 </tr>
                             </thead>
+                            <!-- ta tabela jest wypełniana przez JS, w html jest na początku pusta -->
                             <tbody id="transactionList">
                             </tbody>
                         </table>
